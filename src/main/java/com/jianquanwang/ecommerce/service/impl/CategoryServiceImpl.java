@@ -1,5 +1,7 @@
 package com.jianquanwang.ecommerce.service.impl;
 
+import com.jianquanwang.ecommerce.exceptions.APIException;
+import com.jianquanwang.ecommerce.exceptions.ResourceNotFoundException;
 import com.jianquanwang.ecommerce.model.Category;
 import com.jianquanwang.ecommerce.repositories.CategoryRepository;
 import com.jianquanwang.ecommerce.service.CategoryService;
@@ -22,18 +24,26 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAll();
+        if (categories.isEmpty()) {
+            throw new APIException("No category created till now");
+        }
+        return categories;
     }
 
     @Override
     public void createCategory(Category category) {
+        Category existingCategory = categoryRepository.findByCategoryName(category.getCategoryName());
+        if(existingCategory != null) {
+            throw new APIException("Category with the name" + category.getCategoryName() + " already exists!");
+        }
         categoryRepository.save(category);
     }
 
     @Override
     public String deleteCategory(Long categoryId) {
         categoryRepository.findById(categoryId)
-                .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "Resource is not found"));
+                .orElseThrow(()->new ResourceNotFoundException("Category", "CategoryId", categoryId));
 
         categoryRepository.deleteById(categoryId);
         return "category with categoryID:" + categoryId + " is removed successfully";
