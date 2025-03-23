@@ -30,7 +30,7 @@ public class Address {
 
     @ToString.Exclude
     @ManyToMany(mappedBy = "addresses")
-    private List<Address> users = new ArrayList<>();
+    private List<User> users = new ArrayList<>();
 
     public Address(String street, String buildingName, String city, String state, String country, String postalCode) {
         this.street = street;
