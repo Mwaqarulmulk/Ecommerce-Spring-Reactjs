@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/public/categories")
+@RequestMapping("/api/v1")
 public class CategoryController {
 
     private CategoryService categoryService;
@@ -24,7 +24,7 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
-    @GetMapping("")
+    @GetMapping("/categories")
     public ResponseEntity<CategoryResponse> getAllCategories(
             @RequestParam(name="pageNumber", defaultValue = AppConstants.PAGE_NUMBER, required = false) Integer pageNumber,
             @RequestParam(name="pageSize", defaultValue = AppConstants.PAGE_SIZE, required = false) Integer pageSize,
@@ -34,18 +34,18 @@ public class CategoryController {
         return new ResponseEntity<>(categoryResponse, HttpStatus.OK);
     }
 
-    @PostMapping("")
+    @PostMapping("/categories")
     public ResponseEntity<String> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
         CategoryDTO savedCategoryDTO = categoryService.createCategory(categoryDTO);
         return new ResponseEntity<>("Category added successfully", HttpStatus.CREATED);
     }
 
-    @DeleteMapping("{categoryId}")
+    @DeleteMapping("/categories/{categoryId}")
     public ResponseEntity<CategoryDTO> deleteCategory(@PathVariable  Long categoryId) {
         CategoryDTO categoryDTO = this.categoryService.deleteCategory(categoryId);
         return ResponseEntity.ok(categoryDTO);
     }
-    @PutMapping("{categoryId}")
+    @PutMapping("/categories/{categoryId}")
     public ResponseEntity<CategoryDTO> updateCategory(@Valid @RequestBody CategoryDTO categoryDTO, @PathVariable Long categoryId) {
         CategoryDTO savedCategoryDTO = categoryService.updateCategory(categoryDTO, categoryId);
         return new ResponseEntity<>(savedCategoryDTO, HttpStatus.OK);
