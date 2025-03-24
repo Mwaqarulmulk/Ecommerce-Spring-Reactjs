@@ -2,10 +2,13 @@ package com.jianquanwang.ecommerce.service.impl;
 
 import com.jianquanwang.ecommerce.exceptions.APIException;
 import com.jianquanwang.ecommerce.exceptions.ResourceNotFoundException;
+import com.jianquanwang.ecommerce.model.Cart;
 import com.jianquanwang.ecommerce.model.Category;
 import com.jianquanwang.ecommerce.model.Product;
+import com.jianquanwang.ecommerce.payload.CartResponse;
 import com.jianquanwang.ecommerce.payload.ProductDTO;
 import com.jianquanwang.ecommerce.payload.ProductResponse;
+import com.jianquanwang.ecommerce.repositories.CartRepository;
 import com.jianquanwang.ecommerce.repositories.CategoryRepository;
 import com.jianquanwang.ecommerce.repositories.ProductRepository;
 import com.jianquanwang.ecommerce.service.FileService;
@@ -35,6 +38,8 @@ public class ProductServiceImpl implements ProductService {
     private ProductRepository productRepository;
     @Autowired
     private CategoryRepository categoryRepository;
+    @Autowired
+    private CartRepository cartRepository;
     @Autowired
     private FileService fileService;
     @Value("${project.image}")
@@ -77,11 +82,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse getProductsByCategory(Long categoryId, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(()->new ResourceNotFoundException("Category", "categoryId", categoryId));
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
-        Page<Product> products =  productRepository.findByCategoryOrderByPriceAsc(categoryId, pageDetails);
+        Page<Product> products =  productRepository.findByCategoryOrderByPriceAsc(category, pageDetails);
         return getProductResponse(products);
     }
 
@@ -118,7 +125,18 @@ public class ProductServiceImpl implements ProductService {
         Product existingProduct = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("product", "productId", productId));
         product.setProductId(productId);
+        double specialPrice = product.getPrice() * (1 - product.getDiscount() * 0.01);
+        product.setSpecialPrice(specialPrice);
         Product savedProduct = productRepository.save(product);
+        List<Cart> carts = cartRepository.findCartByProductId(productId);
+        carts.forEach(cart -> {
+                    cart.getCartItems().forEach(item -> {
+                        if (item.getProduct().getProductId().equals(productId)) {
+                            item.setProduct(savedProduct);
+                        }
+                    });
+        });
+        cartRepository.saveAll(carts);
         return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
