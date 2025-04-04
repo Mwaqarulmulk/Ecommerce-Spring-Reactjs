@@ -25,7 +25,7 @@ const Products = () => {
         specialPrice: 2040.0,
     }]  
     return (
-        <div className="lg:px-14 sm:px-8 px-4 py-14 2xl:w-[90%] 2xl:mx-auto ">
+        <div className="lg:px-14 sm:px-8 px-4 py-14 2xl:w-[90%] 2xl:mx-auto">
             {
                 isLoading ? (
                     <p>It is loading...</p>
@@ -39,11 +39,12 @@ const Products = () => {
                     </div>
                 ) : (
                     <div className="min-h-[700px]">
-                        <div className="pp-6 pt-14 grid 2xl:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-y-6 gap-x-6"> 
-                            {products &&
-                            products.map(
+                        <div className="pb-6 pt-14 grid 2xl:grid-cols-4 lg:grid-cols-3 sm:grid-cols-2 gap-y-6 gap-x-6"> 
+                        {products &&
+                           products.map(
                                 (item, i) => <ProductCard key={i}{...item}/>
-                            )}
+                           )
+                        }
                         </div>
                     </div>
                 )
