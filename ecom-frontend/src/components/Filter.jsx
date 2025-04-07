@@ -31,6 +31,20 @@ const Filter = () => {
         setSearchTerm(currentSearchTerm);
     }, [searchParams]);
 
+    useEffect(() => { 
+        const handler = setTimeout(() => {
+            if (searchTerm) {
+                searchParams.set("keyword", searchTerm);
+            } else {
+                searchParams.delete("keyword");
+            }
+            navigate(`${pathname}?${searchParams.toString()}`);
+        }, 700);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [searchParams, searchTerm, navigate, pathname]);
 
     const handleCategoryChange = (event) => {
         const selectedCategory = event.target.value;
@@ -61,7 +75,7 @@ const Filter = () => {
         <div className="flex lg:flex-row flex-col-reverse lg:justify-center justify-center items-center gap-4">
             {/* Search Bar */}
             <div className="relative flex items-center 2xl:w-[450px] sm:w-[420px] w-full">
-                <input type="text" placeholder="Search Products" className="border border-gray-400 text-slate-800 rounded-md py-2 pl-10 pr-4 w-full focus:outline-none focus:ring-2 focus:ring-[#1976d2]"/>
+                <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search Products" className="border border-gray-400 text-slate-800 rounded-md py-2 pl-10 pr-4 w-full focus:outline-none focus:ring-2 focus:ring-[#1976d2]"/>
                 <FiSearch className="absolute left-3 text-slate-800 size={20"/>
             </div>
 
