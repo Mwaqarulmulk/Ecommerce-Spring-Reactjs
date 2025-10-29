@@ -1,0 +1,4 @@
+# Code owners — assigning default reviewers for pull requests
+# Syntax: Each line is a file pattern followed by one or more GitHub usernames
+
+* @ghulam-mujtaba5
