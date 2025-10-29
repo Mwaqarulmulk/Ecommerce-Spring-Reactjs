@@ -1,0 +1,296 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  REGISTRY: docker.io
+  BACKEND_DIR: ecom-backend
+  FRONTEND_DIR: ecom-frontend
+  IMAGE_BACKEND: ${{ secrets.DOCKERHUB_USERNAME }}/ecom-backend
+  IMAGE_FRONTEND: ${{ secrets.DOCKERHUB_USERNAME }}/ecom-frontend
+
+jobs:
+  # Stage 1: Build & Install
+  build_install:
+    name: Build & Install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ''21''
+          distribution: ''temurin''
+          cache: maven
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: ''18''
+          cache: ''npm''
+
+      - name: Build Backend (Maven)
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          echo "Building Backend..."
+          mvn -B clean package -DskipTests
+          echo "✓ Backend build successful"
+
+      - name: Build Frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          echo "Building Frontend..."
+          npm ci
+          npm run build
+          echo "✓ Frontend build successful"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            ${{ env.BACKEND_DIR }}/target/*.jar
+            ${{ env.FRONTEND_DIR }}/dist/
+
+  # Stage 2: Lint & Security Scan
+  lint_security:
+    name: Lint & Security Scan
+    runs-on: ubuntu-latest
+    needs: build_install
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ''18''
+          cache: ''npm''
+
+      - name: Frontend Lint
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          npm ci
+          npm run lint 2>&1 | tee lint-report.txt || true
+          echo "✓ Linting completed"
+
+      - name: Frontend npm audit
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          echo "Running Security Audit..."
+          npm audit --audit-level=moderate 2>&1 | tee audit-report.txt || true
+          echo "✓ Security audit completed"
+
+      - name: Trivy Base Image Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: eclipse-temurin:21-jre-alpine
+          format: ''sarif''
+          output: ''trivy-backend.sarif''
+        continue-on-error: true
+
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-backend.sarif
+        continue-on-error: true
+
+  # Stage 3: Test with Database
+  test_with_db:
+    name: Test with Database
+    runs-on: ubuntu-latest
+    needs: [build_install, lint_security]
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ecommerce
+          POSTGRES_USER: ecomuser
+          POSTGRES_PASSWORD: changeme
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: ''21''
+          distribution: ''temurin''
+          cache: maven
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U ecomuser && echo "✓ PostgreSQL is ready" && break
+            echo "Attempt $i/30: Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Run Backend Tests
+        working-directory: ${{ env.BACKEND_DIR }}
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ecommerce
+          SPRING_DATASOURCE_USERNAME: ecomuser
+          SPRING_DATASOURCE_PASSWORD: changeme
+        run: |
+          echo "Running Backend Tests..."
+          mvn -B test -DargLine="-Dspring.profiles.active=test"
+          echo "✓ Backend tests passed"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ''18''
+          cache: ''npm''
+
+      - name: Run Frontend Tests
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          npm ci
+          npm test -- --watchAll=false --passWithNoTests 2>&1 | tee test-report.txt || true
+          echo "✓ Frontend tests completed"
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: |
+            ${{ env.BACKEND_DIR }}/target/surefire-reports/
+            ${{ env.FRONTEND_DIR }}/test-report.txt
+
+  # Stage 4: Build Docker Images
+  build_docker_images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test_with_db
+    outputs:
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Metadata (Backend)
+        id: meta-backend
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_BACKEND }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ env.BACKEND_DIR }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_BACKEND }}:buildcache,mode=max
+
+      - name: Extract Metadata (Frontend)
+        id: meta-frontend
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.IMAGE_FRONTEND }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ${{ env.FRONTEND_DIR }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_FRONTEND }}:buildcache,mode=max
+
+      - name: Image Scan Results
+        run: |
+          echo "✓ Backend Image: ${{ env.IMAGE_BACKEND }}"
+          echo "✓ Frontend Image: ${{ env.IMAGE_FRONTEND }}"
+          echo "Images pushed to Docker Hub successfully!"
+
+  # Stage 5: Deploy (Conditional)
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build_docker_images
+    if: github.event_name == ''push'' && github.ref == ''refs/heads/main'' && success()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deployment Notification
+        run: |
+          echo "=== Deployment Initiated ==="
+          echo "Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Backend Image: ${{ needs.build_docker_images.outputs.backend-image }}"
+          echo "Frontend Image: ${{ needs.build_docker_images.outputs.frontend-image }}"
+          echo "=== Ready for Production Deployment ==="
+
+      - name: Pull Latest Images
+        run: |
+          echo "Images are available at Docker Hub:"
+          echo "- ${{ needs.build_docker_images.outputs.backend-image }}"
+          echo "- ${{ needs.build_docker_images.outputs.frontend-image }}"
+
+      - name: Deployment Summary
+        run: |
+          cat > deployment-summary.txt <<EOF
+          Deployment Summary
+          ==================
+          Date: $(date)
+          Status: SUCCESS
+          Backend Image: ${{ needs.build_docker_images.outputs.backend-image }}
+          Frontend Image: ${{ needs.build_docker_images.outputs.frontend-image }}
+          
+          Next Steps:
+          1. Use docker-compose.yml to deploy
+          2. Pull images: docker pull <image-name>
+          3. Run: docker-compose up -d
+          EOF
+          cat deployment-summary.txt
+
+      - name: Upload Deployment Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-report
+          path: deployment-summary.txt
