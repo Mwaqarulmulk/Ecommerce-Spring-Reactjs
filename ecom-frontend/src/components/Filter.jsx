@@ -58,7 +58,7 @@ const Filter = () => {
         setCategory(event.target.value);
     };
 
-    const toggleSortOrder = () => {
+    const _toggleSortOrder = () => {
         setSortOrder((prevOrder) => {
             const newOrder = (prevOrder === "asc") ?  "desc" : "asc";
             params.set("sortby", newOrder);
@@ -67,7 +67,7 @@ const Filter = () => {
         })
     };
 
-    const handleClearFilters = () => {
+    const _handleClearFilters = () => {
         navigate({ pathname : window.location.pathname });
     };
 

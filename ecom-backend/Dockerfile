@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM maven:3.9.0-eclipse-temurin-21 AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY ecom-backend/pom.xml ./pom.xml
 COPY ecom-backend/src ./src
