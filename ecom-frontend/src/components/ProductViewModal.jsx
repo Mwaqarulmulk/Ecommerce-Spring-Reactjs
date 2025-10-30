@@ -6,9 +6,7 @@ import {MdClose, MdDone} from 'react-icons/md'
 export default function ProductViewModal({open, setOpen, product, isAvailable}) {
 
   const {productName,image,description,price,specialPrice} = product;
-  const handleClickOpen = () => {
-    setOpen(true);
-  }
+  
   return (
     <>
       <Dialog open={open} as="div" className="relative z-10" onClose={()=>{setOpen(false)}} __demoMode>

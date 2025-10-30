@@ -1,5 +1,5 @@
 import { Button, FormControl, InputLabel, MenuItem, Select, Tooltip } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FiArrowUp, FiRefreshCw, FiSearch } from "react-icons/fi"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -18,7 +18,7 @@ const Filter = () => {
     const navigate = useNavigate();
 
     const [category, setCategory] = useState("all");
-    const [sortOrder, setSortOrder] = useState("asc");
+    const [, setSortOrder] = useState("asc");
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
