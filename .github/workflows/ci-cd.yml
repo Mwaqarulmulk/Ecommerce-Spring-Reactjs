@@ -307,6 +307,10 @@ jobs:
     timeout-minutes: 30
     needs: build_docker_images
     if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+      RENDER_FRONTEND_SERVICE_ID: ${{ secrets.RENDER_FRONTEND_SERVICE_ID }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -328,22 +332,22 @@ jobs:
           echo "- ${{ needs.build_docker_images.outputs.frontend-image }}"
 
       - name: Deploy Backend to Render
-        if: ${{ secrets.RENDER_API_KEY != '' }}
+        if: env.RENDER_API_KEY != ''
         run: |
           echo "Deploying Backend to Render..."
-          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          curl -X POST "https://api.render.com/v1/services/${RENDER_BACKEND_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache": false}'
           echo "✓ Backend deployment triggered on Render"
         continue-on-error: true
 
       - name: Deploy Frontend to Render
-        if: ${{ secrets.RENDER_API_KEY != '' }}
+        if: env.RENDER_API_KEY != ''
         run: |
           echo "Deploying Frontend to Render..."
-          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_FRONTEND_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          curl -X POST "https://api.render.com/v1/services/${RENDER_FRONTEND_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache": false}'
           echo "✓ Frontend deployment triggered on Render"
