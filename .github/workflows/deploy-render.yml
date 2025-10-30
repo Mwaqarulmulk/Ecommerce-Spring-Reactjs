@@ -13,19 +13,23 @@ jobs:
     name: Deploy to Render
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
+    env:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_BACKEND_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+      RENDER_FRONTEND_SERVICE_ID: ${{ secrets.RENDER_FRONTEND_SERVICE_ID }}
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Deploy Backend to Render
-        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_BACKEND_SERVICE_ID != '' }}
+        if: env.RENDER_API_KEY != '' && env.RENDER_BACKEND_SERVICE_ID != ''
         run: |
           echo "🚀 Deploying Backend to Render..."
           
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            "https://api.render.com/v1/services/${RENDER_BACKEND_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache": false}')
           
@@ -41,13 +45,13 @@ jobs:
           fi
 
       - name: Deploy Frontend to Render
-        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_FRONTEND_SERVICE_ID != '' }}
+        if: env.RENDER_API_KEY != '' && env.RENDER_FRONTEND_SERVICE_ID != ''
         run: |
           echo "🎨 Deploying Frontend to Render..."
           
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_FRONTEND_SERVICE_ID }}/deploys" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            "https://api.render.com/v1/services/${RENDER_FRONTEND_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Content-Type: application/json" \
             -d '{"clearCache": false}')
           
@@ -86,7 +90,7 @@ jobs:
           echo "========================================="
 
       - name: Setup Instructions (if secrets not configured)
-        if: ${{ secrets.RENDER_API_KEY == '' || secrets.RENDER_BACKEND_SERVICE_ID == '' || secrets.RENDER_FRONTEND_SERVICE_ID == '' }}
+        if: env.RENDER_API_KEY == '' || env.RENDER_BACKEND_SERVICE_ID == '' || env.RENDER_FRONTEND_SERVICE_ID == ''
         run: |
           echo "⚠️  RENDER SECRETS NOT CONFIGURED"
           echo "========================================="
