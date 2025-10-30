@@ -1,0 +1,26 @@
+# DEPLOYMENT INFORMATION
+Generated: 2025-10-30 11:30:10
+
+## Service IDs
+- Database ID: 
+- Backend Service ID: PLACEHOLDER
+- Frontend Service ID: PLACEHOLDER
+
+## URLs
+- Backend: https://ecommerce-backend-PLACEHOLDER.onrender.com
+- Frontend: https://ecommerce-frontend-PLACEHOLDER.onrender.com
+- Health Check: https://ecommerce-backend-PLACEHOLDER.onrender.com/actuator/health
+
+## GitHub Secrets
+Add these to: https://github.com/ghulam-mujtaba5/Ecommerce-Spring-Reactjs/settings/secrets/actions
+
+RENDER_API_KEY=rnd_dDmVRQFB82oTLl56P8aa8ZG6yrpU
+RENDER_BACKEND_SERVICE_ID=PLACEHOLDER
+RENDER_FRONTEND_SERVICE_ID=PLACEHOLDER
+
+## Next Steps
+1. Wait 10-12 minutes for builds to complete
+2. Visit frontend URL: https://ecommerce-frontend-PLACEHOLDER.onrender.com
+3. Check health: https://ecommerce-backend-PLACEHOLDER.onrender.com/actuator/health
+4. Take screenshots
+5. Add GitHub secrets (see above)

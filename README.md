@@ -630,3 +630,17 @@ This project is submitted as part of the **DevOps Lab Midterm Exam** at COMSATS 
 - ✅ No hardcoded passwords (all use environment variables)
 - ✅ Both team members have visible commits in repository
 - ✅ Complete documentation and DevOps report included
+
+
+
+## 🌐 Live Demo
+
+**Application deployed on Render.com:**
+
+- 🎨 **Frontend**: https://ecommerce-frontend-PLACEHOLDER.onrender.com
+- 🚀 **Backend**: https://ecommerce-backend-PLACEHOLDER.onrender.com
+- 💚 **Health Check**: https://ecommerce-backend-PLACEHOLDER.onrender.com/actuator/health
+
+**Note**: First request may take 30-60 seconds (free tier warm-up)
+
+**Deployed on**: October 30, 2025

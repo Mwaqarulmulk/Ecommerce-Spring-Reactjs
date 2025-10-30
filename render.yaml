@@ -1,29 +1,20 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: ecommerce-db
-    env: docker
+databases:
+  - name: ecommerce-db
+    databaseName: ecommerce
+    user: ecomuser
     plan: free
-    dockerfilePath: ./ecom-backend/Dockerfile.db
-    envVars:
-      - key: POSTGRES_DB
-        value: ecommerce
-      - key: POSTGRES_USER
-        value: ecomuser
-      - key: POSTGRES_PASSWORD
-        generateValue: true
-    disk:
-      name: postgres-data
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
+    region: oregon
 
+services:
   # Spring Boot Backend
   - type: web
     name: ecommerce-backend
-    env: java
+    runtime: docker
     plan: free
-    buildCommand: cd ecom-backend && ./mvnw clean package -DskipTests
-    startCommand: cd ecom-backend && java -jar target/*.jar
+    region: oregon
+    branch: master
+    dockerfilePath: ./ecom-backend/Dockerfile
+    healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_DATASOURCE_URL
         fromDatabase:
@@ -38,7 +29,7 @@ services:
           name: ecommerce-db
           property: password
       - key: SERVER_PORT
-        value: 5000
+        value: 10000
       - key: SPRING_JPA_HIBERNATE_DDL_AUTO
         value: update
       - key: SPRING_PROFILES_ACTIVE
@@ -47,13 +38,16 @@ services:
   # React Frontend
   - type: web
     name: ecommerce-frontend
-    env: static
+    runtime: static
     plan: free
+    region: oregon
+    branch: master
     buildCommand: cd ecom-frontend && npm install && npm run build
     staticPublishPath: ./ecom-frontend/dist
+    pullRequestPreviewsEnabled: false
     envVars:
       - key: VITE_API_URL
         fromService:
           name: ecommerce-backend
           type: web
-          property: host
+          property: hostport
