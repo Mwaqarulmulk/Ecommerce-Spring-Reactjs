@@ -40,7 +40,6 @@ services:
     name: ecommerce-frontend
     runtime: static
     plan: free
-    region: oregon
     branch: master
     buildCommand: cd ecom-frontend && npm install && npm run build
     staticPublishPath: ./ecom-frontend/dist
