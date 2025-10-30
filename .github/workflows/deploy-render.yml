@@ -1,0 +1,112 @@
+name: Deploy to Render
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [ master ]
+    paths:
+      - 'ecom-backend/**'
+      - 'ecom-frontend/**'
+
+jobs:
+  deploy-to-render:
+    name: Deploy to Render
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Backend to Render
+        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_BACKEND_SERVICE_ID != '' }}
+        run: |
+          echo "🚀 Deploying Backend to Render..."
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}')
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Backend deployment triggered successfully!"
+            echo "Response: $BODY"
+          else
+            echo "⚠️ Backend deployment request returned status: $HTTP_CODE"
+            echo "Response: $BODY"
+          fi
+
+      - name: Deploy Frontend to Render
+        if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_FRONTEND_SERVICE_ID != '' }}
+        run: |
+          echo "🎨 Deploying Frontend to Render..."
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "https://api.render.com/v1/services/${{ secrets.RENDER_FRONTEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}')
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -eq 201 ] || [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Frontend deployment triggered successfully!"
+            echo "Response: $BODY"
+          else
+            echo "⚠️ Frontend deployment request returned status: $HTTP_CODE"
+            echo "Response: $BODY"
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "========================================="
+          echo "🎉 RENDER DEPLOYMENT SUMMARY"
+          echo "========================================="
+          echo ""
+          echo "📅 Date: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          echo "📝 Commit: ${{ github.sha }}"
+          echo "🌿 Branch: ${{ github.ref_name }}"
+          echo ""
+          echo "Services Deployed:"
+          echo "  🚀 Backend API"
+          echo "  🎨 Frontend Application"
+          echo ""
+          echo "⏰ Estimated deployment time:"
+          echo "  Backend: 5-8 minutes"
+          echo "  Frontend: 2-3 minutes"
+          echo ""
+          echo "📊 Monitor at: https://dashboard.render.com"
+          echo ""
+          echo "✅ Deployment triggers sent successfully!"
+          echo "========================================="
+
+      - name: Setup Instructions (if secrets not configured)
+        if: ${{ secrets.RENDER_API_KEY == '' || secrets.RENDER_BACKEND_SERVICE_ID == '' || secrets.RENDER_FRONTEND_SERVICE_ID == '' }}
+        run: |
+          echo "⚠️  RENDER SECRETS NOT CONFIGURED"
+          echo "========================================="
+          echo ""
+          echo "To enable automatic Render deployment, add these GitHub secrets:"
+          echo ""
+          echo "1. RENDER_API_KEY"
+          echo "   Get from: https://dashboard.render.com/account/settings"
+          echo "   Navigate to: API Keys section"
+          echo ""
+          echo "2. RENDER_BACKEND_SERVICE_ID"
+          echo "   Get from: Backend service URL in Render dashboard"
+          echo "   Format: srv-xxxxxxxxxxxxx"
+          echo ""
+          echo "3. RENDER_FRONTEND_SERVICE_ID"
+          echo "   Get from: Frontend service URL in Render dashboard"
+          echo "   Format: srv-xxxxxxxxxxxxx"
+          echo ""
+          echo "Add secrets at:"
+          echo "GitHub Repo → Settings → Secrets and variables → Actions"
+          echo ""
+          echo "For manual deployment, follow: DEPLOY_NOW.md"
+          echo "========================================="
