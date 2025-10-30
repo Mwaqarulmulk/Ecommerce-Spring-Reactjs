@@ -2,8 +2,22 @@
 
 **Project**: E-Commerce Full Stack Application  
 **Lab Code**: CSC418 (DevOps for Cloud Computing)  
+**Group Number**: Group-16  
 **Date**: October 30, 2025  
-**Institution**: COMSATS University Islamabad, Lahore Campus  
+**Institution**: COMSATS University Islamabad, Lahore Campus
+
+---
+
+## 👥 Team Members
+
+| Name | Registration ID | Role | GitHub Profile |
+|------|----------------|------|----------------|
+| Muhammad Waqar Ul Mulk | FA22-BSE-153 | Team Lead | - |
+| Ghulam Mujtaba | FA22-BSE-199 | Developer | [ghulam-mujtaba5](https://github.com/ghulam-mujtaba5) |
+
+**Primary Stack Assigned**: Spring Boot + PostgreSQL + Multi-stage Docker build + Integration tests in CI
+
+---  
 
 ---
 
