@@ -327,6 +327,28 @@ jobs:
           echo "- ${{ needs.build_docker_images.outputs.backend-image }}"
           echo "- ${{ needs.build_docker_images.outputs.frontend-image }}"
 
+      - name: Deploy Backend to Render
+        if: ${{ secrets.RENDER_API_KEY != '' }}
+        run: |
+          echo "Deploying Backend to Render..."
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_BACKEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+          echo "✓ Backend deployment triggered on Render"
+        continue-on-error: true
+
+      - name: Deploy Frontend to Render
+        if: ${{ secrets.RENDER_API_KEY != '' }}
+        run: |
+          echo "Deploying Frontend to Render..."
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_FRONTEND_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+          echo "✓ Frontend deployment triggered on Render"
+        continue-on-error: true
+
       - name: Deployment Summary
         run: |
           cat > deployment-summary.txt <<EOF
@@ -337,10 +359,15 @@ jobs:
           Backend Image: ${{ needs.build_docker_images.outputs.backend-image }}
           Frontend Image: ${{ needs.build_docker_images.outputs.frontend-image }}
           
-          Next Steps:
-          1. Use docker-compose.yml to deploy
-          2. Pull images: docker pull <image-name>
+          Docker Hub Deployment:
+          1. Images available at Docker Hub
+          2. Use docker-compose.yml to deploy locally
           3. Run: docker-compose up -d
+          
+          Render Deployment:
+          1. Backend: Deployed to Render (if configured)
+          2. Frontend: Deployed to Render (if configured)
+          3. Check Render dashboard for live URLs
           EOF
           cat deployment-summary.txt
 
