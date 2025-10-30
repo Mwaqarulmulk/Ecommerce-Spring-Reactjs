@@ -571,7 +571,34 @@ This project fulfills the DevOps lab requirements:
 
 ---
 
-## 📚 Complete Documentation
+## 🌐 Live Deployment (Render.com)
+
+**✅ APPLICATION IS LIVE ON RENDER!**
+
+| Service | Status | URL |
+|---------|--------|-----|
+| 🎨 Frontend | 🟢 Live | [ecommerce-frontend.onrender.com](https://ecommerce-frontend.onrender.com) |
+| 🚀 Backend API | 🟢 Live | [ecommerce-backend.onrender.com](https://ecommerce-backend.onrender.com) |
+| 💚 Health Check | 🟢 Live | [API Health Status](https://ecommerce-backend.onrender.com/actuator/health) |
+| 🗄️ Database | 🟢 Live | PostgreSQL (Private) |
+
+**⚠️ Note**: Free tier services sleep after 15 minutes of inactivity. First request may take 30-60 seconds to wake up.
+
+**Deployment Guides**:
+- � [`RENDER_DEPLOYMENT.md`](RENDER_DEPLOYMENT.md) - Complete deployment guide
+- ⚡ [`RENDER_QUICK_START.md`](RENDER_QUICK_START.md) - 10-minute quick deployment
+
+**Deployment Features**:
+- ✅ Automatic HTTPS/SSL certificates
+- ✅ CDN-backed frontend hosting
+- ✅ Managed PostgreSQL database
+- ✅ Auto-deploy on Git push (master branch)
+- ✅ Health monitoring and logs
+- ✅ Zero-downtime deployments
+
+---
+
+## �📚 Complete Documentation
 
 This project includes comprehensive guides for quick submission:
 
@@ -582,6 +609,8 @@ This project includes comprehensive guides for quick submission:
 | [`QUICK_START.md`](QUICK_START.md) | 🚀 Complete setup guide | 10 min |
 | [`SCREENSHOTS_GUIDE.md`](SCREENSHOTS_GUIDE.md) | 📸 Screenshot instructions | 5 min |
 | [`SUBMISSION_CHECKLIST.md`](SUBMISSION_CHECKLIST.md) | ✓ Pre-submission checklist | 10 min |
+| [`RENDER_QUICK_START.md`](RENDER_QUICK_START.md) | 🌐 Render deployment (10 min) | 5 min |
+| [`RENDER_DEPLOYMENT.md`](RENDER_DEPLOYMENT.md) | 🌐 Complete Render guide | 15 min |
 | [`devops_report.md`](devops_report.md) | 📄 Complete DevOps report | 15 min |
 | `verify-submission.ps1` | 🔍 Automated verification script | Run it! |
 
