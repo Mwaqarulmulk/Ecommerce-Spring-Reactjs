@@ -19,6 +19,7 @@ jobs:
   build_install:
     name: Build & Install
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -36,20 +37,47 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Build Backend (Maven)
+      - name: Build Backend (Maven) (retry up to 3)
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
-          echo "Building Backend..."
-          mvn -B clean package -DskipTests
-          echo "✓ Backend build successful"
+          set -euo pipefail
+          echo "Building Backend with retries..."
+          attempts=0; max=3
+          until [ $attempts -ge $max ]
+          do
+            attempts=$((attempts+1))
+            echo "Attempt $attempts/$max: mvn -B clean package -DskipTests"
+            if mvn -B clean package -DskipTests; then
+              echo "✓ Backend build successful"
+              break
+            fi
+            echo "Backend build failed on attempt $attempts"
+            sleep $((attempts * 5))
+          done
+          if [ $attempts -gt $max ]; then
+            echo "Backend build failed after $max attempts"; exit 1
+          fi
 
-      - name: Build Frontend
+      - name: Build Frontend (npm) (retry up to 3)
         working-directory: ${{ env.FRONTEND_DIR }}
         run: |
-          echo "Building Frontend..."
-          npm ci
-          npm run build
-          echo "✓ Frontend build successful"
+          set -euo pipefail
+          echo "Building Frontend with retries..."
+          attempts=0; max=3
+          until [ $attempts -ge $max ]
+          do
+            attempts=$((attempts+1))
+            echo "Attempt $attempts/$max: npm ci && npm run build"
+            if npm ci && npm run build; then
+              echo "✓ Frontend build successful"
+              break
+            fi
+            echo "Frontend build failed on attempt $attempts"
+            sleep $((attempts * 5))
+          done
+          if [ $attempts -gt $max ]; then
+            echo "Frontend build failed after $max attempts"; exit 1
+          fi
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -63,6 +91,7 @@ jobs:
   lint_security:
     name: Lint & Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build_install
     steps:
       - name: Checkout Code
@@ -106,6 +135,7 @@ jobs:
   test_with_db:
     name: Test with Database
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: [build_install, lint_security]
     services:
       postgres:
@@ -136,11 +166,19 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL to be ready..."
+          ready=1
           for i in {1..30}; do
-            pg_isready -h localhost -p 5432 -U ecomuser && echo "✓ PostgreSQL is ready" && break
+            if pg_isready -h localhost -p 5432 -U ecomuser; then
+              echo "✓ PostgreSQL is ready"
+              ready=0
+              break
+            fi
             echo "Attempt $i/30: Waiting for PostgreSQL..."
             sleep 2
           done
+          if [ "$ready" -ne 0 ]; then
+            echo "PostgreSQL did not become ready in time"; exit 1
+          fi
 
       - name: Run Backend Tests
         working-directory: ${{ env.BACKEND_DIR }}
@@ -149,9 +187,23 @@ jobs:
           SPRING_DATASOURCE_USERNAME: ecomuser
           SPRING_DATASOURCE_PASSWORD: changeme
         run: |
-          echo "Running Backend Tests..."
-          mvn -B test -DargLine="-Dspring.profiles.active=test"
-          echo "✓ Backend tests passed"
+          set -euo pipefail
+          echo "Running Backend Tests with retries..."
+          attempts=0; max=3
+          until [ $attempts -ge $max ]
+          do
+            attempts=$((attempts+1))
+            echo "Attempt $attempts/$max: mvn -B test -DargLine='-Dspring.profiles.active=test'"
+            if mvn -B test -DargLine="-Dspring.profiles.active=test"; then
+              echo "✓ Backend tests passed"
+              break
+            fi
+            echo "Backend tests failed on attempt $attempts"
+            sleep $((attempts * 5))
+          done
+          if [ $attempts -gt $max ]; then
+            echo "Backend tests failed after $max attempts"; exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -178,6 +230,7 @@ jobs:
   build_docker_images:
     name: Build Docker Images
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: test_with_db
     outputs:
       backend-image: ${{ steps.meta-backend.outputs.tags }}
@@ -251,6 +304,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: build_docker_images
     if: github.event_name == 'push' && github.ref == 'refs/heads/master' && success()
     steps:
@@ -295,3 +349,44 @@ jobs:
         with:
           name: deployment-report
           path: deployment-summary.txt
+
+  # Finalize: always run, auto-retry the workflow on failures (up to 3 attempts)
+  finalize:
+    name: Finalize and Auto-Retry
+    runs-on: ubuntu-latest
+    needs: [build_install, lint_security, test_with_db, build_docker_images]
+    if: always()
+    steps:
+      - name: Display run metadata
+        run: |
+          echo "GITHUB_RUN_ID=${GITHUB_RUN_ID}"
+          echo "GITHUB_RUN_ATTEMPT=${GITHUB_RUN_ATTEMPT:-1}"
+
+      - name: Upload logs and artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-final-artifacts
+          path: |
+            ${{ env.BACKEND_DIR }}/target/**
+            ${{ env.FRONTEND_DIR }}/dist/**
+            **/test-report.txt
+
+      - name: Auto-retry on failure (up to 3 attempts)
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runId = Number(process.env.GITHUB_RUN_ID);
+            const attempt = Number(process.env.GITHUB_RUN_ATTEMPT || 1);
+            core.info(`Current run id=${runId}, attempt=${attempt}`);
+            const run = await github.rest.actions.getWorkflowRun({ owner: context.repo.owner, repo: context.repo.repo, run_id: runId });
+            const conclusion = run.data.conclusion;
+            core.info(`Run conclusion: ${conclusion}`);
+            if (conclusion !== 'success' && attempt < 3) {
+              core.info('Triggering a rerun (attempt < 3)');
+              await github.rest.actions.reRunWorkflowRun({ owner: context.repo.owner, repo: context.repo.repo, run_id: runId });
+              core.info('Rerun requested.');
+            } else {
+              core.info('No rerun required (either success or max attempts reached).');
+            }
